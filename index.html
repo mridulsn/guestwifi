@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>guestwifi</title>
+<meta name="description" content="Type your WiFi name and password once and get a printable card with a QR code. Guests point their phone camera at it and join, no spelling out passwords.">
+<meta name="color-scheme" content="light">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<style>
+@font-face {
+  font-family: "Pixelify Sans";
+  src: url("assets/PixelifySans.ttf") format("truetype");
+  font-weight: 400 700;
+  font-display: swap;
+}
+:root {
+  --ink: #111;
+  --paper: #fff;
+  --desk-a: #c9c9c9;
+  --desk-b: #bdbdbd;
+  --muted: #555;
+  --soft: #f2f2f2;
+  --bad: #9b1c1c;
+  --pixel: "Pixelify Sans", "Courier New", monospace;
+  --body: Geneva, Verdana, "Segoe UI", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font: 16px/1.6 var(--body);
+  color: var(--ink);
+  background-color: var(--desk-a);
+  background-image: repeating-conic-gradient(var(--desk-a) 0% 25%, var(--desk-b) 0% 50%);
+  background-size: 4px 4px;
+  min-height: 100vh;
+}
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px dashed var(--ink); outline-offset: 3px; }
+
+/* Menu bar */
+.menubar {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; align-items: center; gap: 18px;
+  height: 30px; padding: 0 16px;
+  background: var(--paper); border-bottom: 2px solid var(--ink);
+  font-size: 14px;
+}
+.menubar .app { display: flex; align-items: center; gap: 8px; font-family: var(--pixel); font-size: 17px; font-weight: 700; }
+.menubar .app svg { width: 20px; height: 17px; }
+.menubar button { background: none; border: 0; padding: 2px 8px; cursor: pointer; font-size: 14px; }
+.menubar button:hover { background: var(--ink); color: var(--paper); }
+
+/* Windows */
+main { max-width: 720px; margin: 0 auto; padding: 40px 16px 24px; }
+.window { background: var(--paper); border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); margin-bottom: 36px; }
+.titlebar {
+  position: relative; height: 26px;
+  border-bottom: 2px solid var(--ink);
+  background: repeating-linear-gradient(to bottom, var(--paper) 0 3px, var(--ink) 3px 4px);
+  background-clip: content-box; padding: 5px 4px;
+}
+.titlebar .box {
+  position: absolute; left: 10px; top: 5px; width: 14px; height: 14px;
+  background: var(--paper); border: 2px solid var(--ink); box-shadow: 0 0 0 3px var(--paper);
+}
+.titlebar h2 {
+  position: absolute; left: 50%; top: 1px; transform: translateX(-50%);
+  margin: 0; padding: 0 10px; background: var(--paper);
+  font: 700 15px/22px var(--pixel); white-space: nowrap;
+}
+.pane { padding: 28px 32px 30px; }
+
+h1 { font: 700 34px/1.15 var(--pixel); margin: 0 0 6px; letter-spacing: .5px; }
+.lede { margin: 0 0 24px; color: var(--muted); }
+
+.row { margin: 0 0 20px; }
+.lab { display: block; font-weight: 700; margin-bottom: 6px; }
+.lab .opt { font-weight: 400; color: var(--muted); font-size: 14px; }
+.text {
+  display: block; width: 100%; padding: 9px 12px;
+  border: 2px solid var(--ink); border-radius: 0; background: var(--paper);
+  box-shadow: inset 2px 2px 0 var(--soft);
+}
+.text::placeholder { color: #888; }
+.pwbox { display: flex; }
+.pwbox .text { flex: 1; min-width: 0; font-family: "Courier New", monospace; font-size: 17px; }
+.pwbox button {
+  flex: none; border: 2px solid var(--ink); border-left: 0; background: var(--soft);
+  padding: 0 14px; cursor: pointer; font-size: 14px; font-weight: 700;
+}
+.pwbox button:hover { background: var(--ink); color: var(--paper); }
+
+.seg { display: grid; border: 2px solid var(--ink); border-radius: 8px; overflow: hidden; }
+.seg.three { grid-template-columns: repeat(3, 1fr); }
+.seg button { background: var(--paper); border: 0; border-left: 2px solid var(--ink); padding: 6px 4px; cursor: pointer; font-size: 15px; }
+.seg button:first-child { border-left: 0; }
+.seg button:hover { background: var(--soft); }
+.seg button[aria-pressed=true] { background: var(--ink); color: var(--paper); font-weight: 700; }
+
+.check { display: flex; gap: 10px; align-items: flex-start; margin: 0 0 14px; font-size: 15px; cursor: pointer; }
+.check input { width: 16px; height: 16px; margin: 4px 0 0; accent-color: var(--ink); flex: none; }
+.check .note { display: block; color: var(--muted); font-size: 13px; }
+
+.msgs { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+.msgs li { border-left: 3px solid var(--ink); padding: 2px 0 2px 10px; margin: 0 0 8px; }
+.msgs li.error { border-color: var(--bad); color: var(--bad); }
+.msgs li.info { color: var(--muted); }
+
+/* Card window */
+.cardpane { padding: 24px 32px 28px; }
+.stage { background: var(--soft); border: 2px solid var(--ink); padding: 26px 16px; display: flex; justify-content: center; }
+
+/* The card itself. Sizes are in container units so the same card prints at any size. */
+.card { width: 300px; max-width: 100%; container-type: inline-size; }
+.face {
+  position: relative; background: var(--paper); color: var(--ink);
+  border: .9cqw solid var(--ink); box-shadow: 1.6cqw 1.6cqw 0 var(--ink);
+  padding: 7cqw 7cqw 6cqw; text-align: center;
+  display: flex; flex-direction: column; align-items: center;
+}
+.face .head { display: flex; align-items: center; justify-content: center; gap: 3cqw; margin: 0 0 4cqw; }
+.face .head svg { width: 11cqw; height: 9cqw; flex: none; }
+.face .title { font: 700 9.5cqw/1.05 var(--pixel); letter-spacing: .2cqw; overflow-wrap: anywhere; }
+.face .qr { width: 72cqw; height: 72cqw; display: block; margin: 0 auto; }
+.face .scan { font-size: 4.6cqw; margin: 2cqw 0 4.5cqw; color: var(--muted); line-height: 1.3; }
+.face .facts { width: 100%; border-top: .5cqw dashed var(--ink); padding-top: 4cqw; text-align: left; }
+.face .fact { display: flex; gap: 3cqw; align-items: baseline; margin: 0 0 1.6cqw; font-size: 4.4cqw; line-height: 1.3; }
+.face .fact .k { flex: none; width: 22cqw; color: var(--muted); }
+.face .fact .v { font-weight: 700; font-size: 5.4cqw; overflow-wrap: anywhere; min-width: 0; }
+.face .fact .v.mono { font-family: "Courier New", monospace; font-size: 5.8cqw; letter-spacing: .2cqw; }
+.face .fact .v.long { font-size: 4.6cqw; letter-spacing: 0; }
+.face .fact .v.xlong { font-size: 3.8cqw; letter-spacing: 0; }
+.face .note { margin: 3cqw 0 0; font-size: 4.4cqw; line-height: 1.35; text-align: center; width: 100%; overflow-wrap: anywhere; }
+.face .note:empty { display: none; }
+
+/* Frame: roomier, bigger code */
+.card.frame .face { padding: 9cqw 9cqw 8cqw; }
+.card.frame .face .title { font-size: 11cqw; }
+.card.frame .face .qr { width: 66cqw; height: 66cqw; }
+
+/* Table tent: two faces, the top one upside down, folded along the dashed line */
+.card .fold { display: none; }
+.card.tent .face.back { display: flex; transform: rotate(180deg); box-shadow: none; }
+.card.tent .fold { display: block; height: 0; border-top: .5cqw dashed var(--muted); margin: 0; position: relative; }
+.card.tent .fold span { position: absolute; right: 0; top: -5cqw; font-size: 3.2cqw; color: var(--muted); background: var(--soft); padding: 0 1cqw; }
+.card .face.back { display: none; }
+.card.tent .face { box-shadow: none; }
+.card.tent .face .qr { width: 58cqw; height: 58cqw; }
+.card.tent .face .head { margin-bottom: 3cqw; }
+.card.tent .face { padding-top: 5cqw; padding-bottom: 4.5cqw; }
+
+.card.empty .qr, .card.empty .facts { opacity: .15; }
+.blocked { margin: 14px 0 0; font-size: 14px; text-align: center; color: var(--bad); }
+.blocked[hidden] { display: none; }
+
+.cardopts { margin: 22px 0 0; }
+.actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 22px; }
+.btn { border: 2px solid var(--ink); background: var(--paper); border-radius: 8px; padding: 6px 18px; cursor: pointer; font-weight: 700; }
+.btn:active { background: var(--ink); color: var(--paper); }
+.btn.default { box-shadow: 0 0 0 3px var(--paper), 0 0 0 6px var(--ink); padding: 8px 26px; font-size: 17px; margin: 6px; }
+.btn[disabled] { opacity: .4; cursor: not-allowed; }
+.hint { font-size: 13px; color: var(--muted); margin: 14px 0 0; }
+
+footer { max-width: 720px; margin: 0 auto; padding: 0 16px 48px; font-size: 14px; }
+footer .fcard { background: var(--paper); border: 2px solid var(--ink); padding: 10px 16px; display: flex; gap: 10px 20px; flex-wrap: wrap; justify-content: space-between; }
+footer a { color: var(--ink); }
+
+dialog { padding: 0; border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); max-width: 460px; width: calc(100% - 32px); }
+dialog::backdrop { background: rgba(0,0,0,.15); }
+dialog .pane { padding: 22px 26px 24px; }
+dialog p { margin: 0 0 12px; }
+dialog a { color: var(--ink); }
+dialog .btnrow { text-align: right; margin-top: 18px; }
+
+@media (max-width: 560px) {
+  main { padding-top: 24px; }
+  .pane, .cardpane { padding: 22px 18px 24px; }
+  h1 { font-size: 28px; }
+  .seg button { font-size: 13px; padding: 6px 2px; }
+  .stage { padding: 20px 10px; }
+}
+
+/* Printing: only the card, at its real size */
+@page { size: A4 portrait; margin: 12mm; }
+@media print {
+  body { background: none; }
+  .menubar, footer, #details, .cardopts, .actions, .hint, .blocked, .cardwin > .titlebar, dialog { display: none !important; }
+  main { max-width: none; padding: 0; }
+  .window { border: 0; box-shadow: none; margin: 0; }
+  .cardpane { padding: 0; }
+  .stage { background: none; border: 0; padding: 0; display: block; }
+  .card { margin: 0 auto; max-width: none; }
+  .card.fridge { width: 90mm; }
+  .card.frame { width: 148mm; }
+  .card.tent { width: 100mm; }
+  .face { box-shadow: none; }
+  .card.tent .fold span { background: #fff; }
+}
+</style>
+</head>
+<body>
+<div class="menubar">
+  <span class="app">
+    <svg viewBox="0 0 11 9" shape-rendering="crispEdges" aria-hidden="true"><path fill="#111" d="M3 0h5v1H3zM1 1h2v1H1zM8 1h2v1H8zM0 2h1v1H0zM10 2h1v1h-1zM3 3h5v1H3zM2 4h1v1H2zM8 4h1v1H8zM4 6h3v1H4zM5 8h1v1H5z"/></svg>
+    guestwifi
+  </span>
+  <button type="button" id="aboutBtn">About</button>
+</div>
+
+<main>
+  <section class="window" id="details" aria-labelledby="title">
+    <div class="titlebar"><span class="box" aria-hidden="true"></span><h2>guestwifi</h2></div>
+    <div class="pane">
+      <h1 id="title">WiFi for your guests.</h1>
+      <p class="lede">Type your WiFi details once and print a card. Guests point their phone camera at the code and they're on, no spelling out passwords.</p>
+
+      <div class="row">
+        <label class="lab" for="ssid">WiFi name</label>
+        <input class="text" id="ssid" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e.g. Sharma Home 5G" maxlength="64">
+      </div>
+
+      <div class="row" id="pwRow">
+        <label class="lab" for="pw">Password</label>
+        <div class="pwbox">
+          <input class="text" id="pw" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="64">
+          <button type="button" id="showPw" aria-pressed="false" aria-controls="pw">Show</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <span class="lab" id="secLabel">Security</span>
+        <div class="seg three" id="sec" role="group" aria-labelledby="secLabel">
+          <button type="button" data-sec="WPA">WPA2 / WPA3</button>
+          <button type="button" data-sec="WEP">WEP</button>
+          <button type="button" data-sec="nopass">No password</button>
+        </div>
+      </div>
+
+      <label class="check"><input type="checkbox" id="hidden">
+        <span>Hidden network<span class="note">Tick this only if your WiFi name doesn't show up in the list on phones.</span></span></label>
+
+      <ul class="msgs" id="msgs" aria-live="polite"></ul>
+    </div>
+  </section>
+
+  <section class="window cardwin" aria-labelledby="cardTitle">
+    <div class="titlebar"><span class="box" aria-hidden="true"></span><h2 id="cardTitle">Your card</h2></div>
+    <div class="cardpane">
+      <div class="stage">
+        <div class="card fridge empty" id="card">
+          <div class="face back" aria-hidden="true"></div>
+          <div class="fold" aria-hidden="true"><span>fold here</span></div>
+          <div class="face front" id="front">
+            <div class="head">
+              <svg viewBox="0 0 11 9" shape-rendering="crispEdges" aria-hidden="true"><path fill="#111" d="M3 0h5v1H3zM1 1h2v1H1zM8 1h2v1H8zM0 2h1v1H0zM10 2h1v1h-1zM3 3h5v1H3zM2 4h1v1H2zM8 4h1v1H8zM4 6h3v1H4zM5 8h1v1H5z"/></svg>
+              <span class="title" id="cTitle">Guest WiFi</span>
+            </div>
+            <svg class="qr" id="qr" role="img" aria-label="QR code to join the WiFi" shape-rendering="crispEdges"></svg>
+            <div class="scan">Scan with your phone camera</div>
+            <div class="facts">
+              <div class="fact"><span class="k">Network</span><span class="v" id="cSsid">...</span></div>
+              <div class="fact" id="cPwRow"><span class="k">Password</span><span class="v mono" id="cPw">...</span></div>
+            </div>
+            <p class="note" id="cNote"></p>
+          </div>
+        </div>
+      </div>
+      <p class="blocked" id="blocked" hidden>Fix the details above to make the code.</p>
+
+      <div class="cardopts">
+        <div class="row">
+          <span class="lab" id="styleLabel">Card</span>
+          <div class="seg three" id="style" role="group" aria-labelledby="styleLabel">
+            <button type="button" data-style="fridge">Fridge card</button>
+            <button type="button" data-style="frame">Frame</button>
+            <button type="button" data-style="tent">Table tent</button>
+          </div>
+        </div>
+        <div class="row">
+          <label class="lab" for="heading">Heading</label>
+          <input class="text" id="heading" maxlength="28" value="Guest WiFi">
+        </div>
+        <div class="row">
+          <label class="lab" for="note">A line for your guests <span class="opt">(optional)</span></label>
+          <input class="text" id="note" maxlength="90" placeholder="e.g. Welcome! Make yourself at home.">
+        </div>
+        <label class="check"><input type="checkbox" id="printPw" checked>
+          <span>Print the password on the card<span class="note">Untick it if you'd rather people only scan. The code still has the password inside.</span></span></label>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn default" id="print">Print</button>
+        <button type="button" class="btn" id="save">Save as image</button>
+      </div>
+      <p class="hint" id="sizeHint">Prints 9 x 13 cm on A4 or Letter. Cut along the edge and stick it on the fridge.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="fcard">
+    <span>Test the card first: scan it with your own phone.</span>
+    <a href="https://mridulsaravanan.com/#/projects">More projects</a>
+  </div>
+</footer>
+
+<dialog id="about" aria-labelledby="aboutTitle">
+  <div class="titlebar"><span class="box" aria-hidden="true"></span><h2 id="aboutTitle">About guestwifi</h2></div>
+  <div class="pane">
+    <p><strong>guestwifi</strong> turns your WiFi name and password into a QR code that phones understand. Guests open their camera, tap the WiFi prompt and they're connected. It works with the camera app on iPhones and on most Android phones (or Google Lens).</p>
+    <p>Choose a card: a small one for the fridge, a bigger one for a frame, or a table tent you fold in half. Print it, or save it as an image to send.</p>
+    <p>If you change your WiFi password, make a new card.</p>
+    <p>QR code generator by Kazuhiko Arase (MIT licence). QR Code is a registered trademark of DENSO WAVE. Font: Pixelify Sans (SIL Open Font License).</p>
+    <p>One of the projects at <a href="https://mridulsaravanan.com/#/projects">mridulsaravanan.com</a>.</p>
+    <div class="btnrow"><button type="button" class="btn default" id="aboutOk">OK</button></div>
+  </div>
+</dialog>
+
+<script src="assets/qrcode.js"></script>
+<script src="engine.js"></script>
+<script>
+(function () {
+  'use strict';
+  var GW = window.GuestWifi;
+  var $ = function (id) { return document.getElementById(id); };
+  var ssid = $('ssid'), pw = $('pw'), hidden = $('hidden'), heading = $('heading'), note = $('note'), printPw = $('printPw');
+  var card = $('card'), front = $('front');
+  var state = { security: 'WPA', style: 'fridge' };
+  var HINTS = {
+    fridge: 'Prints 9 x 13 cm on A4 or Letter. Cut along the edge and stick it on the fridge.',
+    frame: 'Prints A5 size (14.8 x 21 cm), ready for a photo frame.',
+    tent: 'Prints 10 x 14 cm with a fold in the middle. Fold along the dashed line so it stands on a table.'
+  };
+
+  // Remember only the card look on this device, never the network details.
+  var KEY = 'guestwifi.v1';
+  try {
+    var saved = JSON.parse(localStorage.getItem(KEY) || '{}');
+    if (saved.style && HINTS[saved.style]) state.style = saved.style;
+    if (typeof saved.heading === 'string') heading.value = saved.heading;
+    if (typeof saved.note === 'string') note.value = saved.note;
+    if (typeof saved.printPw === 'boolean') printPw.checked = saved.printPw;
+  } catch (e) { /* storage blocked: defaults are fine */ }
+  function remember() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({ style: state.style, heading: heading.value, note: note.value, printPw: printPw.checked }));
+    } catch (e) { /* ignore */ }
+  }
+
+  function details() {
+    return { ssid: ssid.value, password: state.security === 'nopass' ? '' : pw.value, security: state.security, hidden: hidden.checked };
+  }
+
+  function press(groupId, attr, value) {
+    Array.prototype.forEach.call($(groupId).querySelectorAll('button'), function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute(attr) === value ? 'true' : 'false');
+    });
+  }
+
+  function render() {
+    var d = details();
+    var msgs = GW.check(d);
+    var errors = msgs.filter(function (m) { return m.level === 'error'; });
+    var list = $('msgs');
+    list.textContent = '';
+    // Before anything is typed, don't scold.
+    msgs.forEach(function (m) {
+      if (!ssid.value && !pw.value && m.level === 'error') return;
+      var li = document.createElement('li');
+      li.className = m.level;
+      li.textContent = m.text;
+      list.appendChild(li);
+    });
+
+    $('pwRow').style.display = state.security === 'nopass' ? 'none' : '';
+    $('cTitle').textContent = heading.value.trim() || 'Guest WiFi';
+    $('cSsid').textContent = d.ssid || 'Your WiFi name';
+    var showPw = state.security !== 'nopass' && printPw.checked;
+    $('cPwRow').style.display = state.security === 'nopass' || showPw ? '' : 'none';
+    $('cPw').textContent = state.security === 'nopass' ? 'None needed' : (d.password || 'Your password');
+    // Long passwords get smaller type instead of breaking across lines, where a break could be misread.
+    var len = (d.password || '').length;
+    $('cPw').className = state.security === 'nopass' ? 'v' : 'v mono' + (len > 22 ? ' xlong' : len > 15 ? ' long' : '');
+    $('cNote').textContent = note.value.trim();
+
+    var ok = errors.length === 0;
+    var text = GW.wifiString(ok ? d : { ssid: 'guestwifi', password: 'example-only', security: 'WPA' });
+    var p = GW.qrPath(GW.qrMatrix(text), 4);
+    var qr = $('qr');
+    qr.setAttribute('viewBox', '0 0 ' + p.size + ' ' + p.size);
+    qr.innerHTML = '<rect width="' + p.size + '" height="' + p.size + '" fill="#fff"/><path fill="#111" d="' + p.d + '"/>';
+    qr.setAttribute('data-wifi', ok ? text : '');
+
+    card.className = 'card ' + state.style + (ok ? '' : ' empty');
+    var back = card.querySelector('.face.back');
+    if (state.style === 'tent') { back.innerHTML = front.innerHTML; back.querySelector('.qr').removeAttribute('id'); stripIds(back); }
+    else back.innerHTML = '';
+    $('blocked').hidden = ok || (!ssid.value && !pw.value);
+    $('print').disabled = !ok;
+    $('save').disabled = !ok;
+    $('sizeHint').textContent = HINTS[state.style];
+  }
+
+  function stripIds(el) {
+    Array.prototype.forEach.call(el.querySelectorAll('[id]'), function (n) { n.removeAttribute('id'); });
+  }
+
+  // Controls
+  [ssid, pw, heading, note].forEach(function (el) { el.addEventListener('input', function () { render(); if (el === heading || el === note) remember(); }); });
+  [hidden, printPw].forEach(function (el) { el.addEventListener('change', function () { render(); remember(); }); });
+  $('sec').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    state.security = b.getAttribute('data-sec'); press('sec', 'data-sec', state.security); render();
+  });
+  $('style').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    state.style = b.getAttribute('data-style'); press('style', 'data-style', state.style); render(); remember();
+  });
+  $('showPw').addEventListener('click', function () {
+    var show = pw.type === 'password';
+    pw.type = show ? 'text' : 'password';
+    this.textContent = show ? 'Hide' : 'Show';
+    this.setAttribute('aria-pressed', String(show));
+  });
+  $('print').addEventListener('click', function () { window.print(); });
+  $('save').addEventListener('click', saveImage);
+  $('aboutBtn').addEventListener('click', function () { $('about').showModal(); });
+  $('aboutOk').addEventListener('click', function () { $('about').close(); });
+
+  // Save as image: the card drawn on a canvas, 1200 px wide, for sending on WhatsApp or similar.
+  function saveImage() {
+    var d = details();
+    if (GW.check(d).some(function (m) { return m.level === 'error'; })) return;
+    var W = 1200, pad = 84, qrSize = 860;
+    var showPw = state.security !== 'nopass' && printPw.checked;
+    var noteText = note.value.trim();
+    var c = document.createElement('canvas');
+    var ctx = c.getContext('2d');
+    var H = pad + 110 + qrSize + 90 + 50 + 70 + (showPw || state.security === 'nopass' ? 80 : 0) + (noteText ? 120 : 0) + pad;
+    c.width = W; c.height = H;
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = '#111'; ctx.lineWidth = 10; ctx.strokeRect(5, 5, W - 10, H - 10);
+    var y = pad;
+    ctx.fillStyle = '#111'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.font = '700 92px "Pixelify Sans", monospace';
+    ctx.fillText(heading.value.trim() || 'Guest WiFi', W / 2, y);
+    y += 130;
+    var p = GW.qrPath(GW.qrMatrix(GW.wifiString(d)), 4);
+    var cell = qrSize / p.size;
+    ctx.save(); ctx.translate((W - qrSize) / 2, y); ctx.scale(cell, cell); ctx.fill(new Path2D(p.d)); ctx.restore();
+    y += qrSize + 10;
+    ctx.fillStyle = '#555'; ctx.font = '44px Verdana, sans-serif';
+    ctx.fillText('Scan with your phone camera', W / 2, y);
+    y += 90;
+    ctx.strokeStyle = '#111'; ctx.lineWidth = 5; ctx.setLineDash([16, 12]);
+    ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - pad, y); ctx.stroke(); ctx.setLineDash([]);
+    y += 40;
+    ctx.textAlign = 'left';
+    function fact(k, v, mono) {
+      ctx.fillStyle = '#555'; ctx.font = '44px Verdana, sans-serif'; ctx.fillText(k, pad, y + 6);
+      ctx.fillStyle = '#111';
+      // Shrink long names and passwords to fit rather than cut them: a cut password is a wrong password.
+      var size = mono ? 56 : 54;
+      do { ctx.font = '700 ' + size + 'px ' + (mono ? '"Courier New", monospace' : 'Verdana, sans-serif'); size -= 2; }
+      while (size > 22 && ctx.measureText(v).width > W - pad * 2 - 300);
+      ctx.fillText(v, pad + 300, y);
+      y += 80;
+    }
+    fact('Network', d.ssid, false);
+    if (state.security === 'nopass') fact('Password', 'None needed', false);
+    else if (showPw) fact('Password', d.password, true);
+    if (noteText) {
+      ctx.textAlign = 'center'; ctx.fillStyle = '#111'; ctx.font = '44px Verdana, sans-serif';
+      ctx.fillText(fitText(ctx, noteText, W - pad * 2), W / 2, y + 30);
+    }
+    c.toBlob(function (blob) {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'guestwifi-' + (d.ssid.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'card') + '.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    }, 'image/png');
+  }
+
+  function fitText(ctx, s, max) {
+    if (ctx.measureText(s).width <= max) return s;
+    while (s.length > 1 && ctx.measureText(s + '...').width > max) s = s.slice(0, -1);
+    return s + '...';
+  }
+
+  press('sec', 'data-sec', state.security);
+  press('style', 'data-style', state.style);
+  render();
+})();
+</script>
+</body>
+</html>
